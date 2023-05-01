@@ -1,3 +1,5 @@
+/* eslint-disable no-use-before-define */
+/* eslint-disable no-undef */
 /* eslint-disable func-names */
 /* eslint-disable no-plusplus */
 /* eslint-disable no-console */
@@ -50,6 +52,11 @@ function getRowOfIndex(index) {
 function getColOfIndex(index) {
   return Math.trunc(index % allCols);
 }
+// Difference between flags and mines;
+let flagNumber = 0;
+// let rightClicked = false;
+let rClickNumber = 0;
+let clickNumber = 0;
 // 3- making xsl for xslt Processor
 $(document).ready(function () {
   const appendedGrid = $(".window");
@@ -64,34 +71,32 @@ $(document).ready(function () {
       // Create XSLT processor and import XSL document
       var xsltProcessor = new XSLTProcessor();
       xsltProcessor.importStylesheet(xslDoc);
-
       // Transform XML document using XSLT processor
       var resultDocument = xsltProcessor.transformToFragment(xmlDoc, document);
-
       // Append result document to window div
       appendedGrid.append(resultDocument);
-
-      // Right click on each span
       // Click or right click on each span
       appendedGrid
         .find("span")
         .on("contextmenu click mousedown", function (event) {
           event.preventDefault();
-
           if (event.which === 3) {
-            $(this).off("click mousedown").addClass("flag");
+            rClickNumber++;
+            diffrenceBetweenFlagsAndMines();
+            $(this).off("click mousedown contextmenu").addClass("flag");
           } else if (event.which === 1) {
             $(this).off("click mousedown").addClass("revealed");
-            // Check if the clicked span contains a mine
             if ($(this).data("value") === "mine") {
-              console.log($(this).data("value"));
+              // Check if the clicked span contains a mine
               mineClicked();
             } else {
               checkAdjacents($(this).index());
+              clickNumber++;
             }
+            console.log("Click Number: ", clickNumber);
+            console.log("Right Click Number: ", rClickNumber);
           }
         });
-      console.log("Successfully appended....");
     },
     error: function () {
       console.log("An error occurred while requesting the XSL file.");
@@ -101,10 +106,17 @@ $(document).ready(function () {
 
 // Handlers
 const smile = document.querySelector(".smile");
+const counterBox = document.querySelector(".counter");
+counterBox.innerHTML = levels[0].mines;
 // 4- Game Logic based On Events:
 // 4-1 clicking on one span
+function diffrenceBetweenFlagsAndMines() {
+  flagNumber++;
+  counterBox.innerHTML = levels[0].mines - flagNumber;
+}
 function mineClicked() {
   smile.dataset.value = "ok";
+  $(".grid").children().off("click mousedown contextmenu");
   alert("MINE");
 }
 // 4-2 Adjacent mines
@@ -126,95 +138,57 @@ function calculateAdjacentMines(index) {
   }
   return adjacentMines;
 }
-function neighborIndexes(index) {
-  // constants
-  const left = index - 1;
-  const right = index + 1;
-  // top
-  const topCenter = index - allRows;
-  const topRight = topCenter + 1;
-  const topLeft = topCenter - 1;
-  // bottom
-  const bottomCenter = index + allRows;
-  const bottomLeft = bottomCenter - 1;
-  const bottomRight = bottomCenter + 1;
-  const indexesArray = [];
-  let indexRow = getRowOfIndex(index);
-  let indexCol = getColOfIndex(index);
-  // special case for rightmost spans
-  // const isRightmost = indexCol === allCols - 1;
-  // validator
-  if (indexRow === 0 && indexCol === 0) {
-    // top left span
-    indexesArray.push(right, bottomCenter, bottomRight);
-  } else if (indexRow === 0 && indexCol === allCols - 1) {
-    // top right span
-    indexesArray.push(left, bottomLeft, bottomCenter);
-  } else if (indexRow === allRows - 1 && indexCol === 0) {
-    // bottom left span
-    indexesArray.push(topCenter, topRight, right);
-  } else if (indexRow !== 0 && indexRow !== allRows - 1 && indexCol === 0) {
-    // left wing spans
-    indexesArray.push(topCenter, topRight, right, bottomCenter, bottomRight);
-    console.log(indexesArray);
-  } else if (
-    indexRow !== 0 &&
-    indexRow !== allRows - 1 &&
-    indexCol === allCols - 1
-  ) {
-    // right wing spans
-    indexesArray.push(topCenter, topLeft, left, bottomLeft, bottomCenter);
-  } else if (indexRow === 0 && indexCol !== 0 && indexCol !== allCols - 1) {
-    // top Row
-    indexesArray.push(left, right, bottomLeft, bottomCenter, bottomRight);
-  } else if (
-    indexRow === allRows - 1 &&
-    indexCol !== 0 &&
-    indexCol !== allCols - 1
-  ) {
-    // bottom Row
-    indexesArray.push(left, right, topLeft, topCenter, topRight);
-  } else if (indexRow === allRows - 1 && indexCol === allCols - 1) {
-    // bottom right span
-    indexesArray.push(topCenter, topLeft, left);
-    console.log(indexesArray);
-  } else {
-    indexesArray.push(
-      topLeft,
-      topCenter,
-      topRight,
-      left,
-      right,
-      bottomLeft,
-      bottomCenter,
-      bottomRight
-    );
+function validator(cellIndex) {
+  let i = cellIndex[0];
+  let j = cellIndex[1];
+  if (0 <= i && i <= allRows - 1 && 0 <= j && j <= allCols - 1) {
+    return [i, j];
   }
-  return indexesArray;
+  return false;
+}
+function getCellIndex(matrix) {
+  let i = matrix[0];
+  let j = matrix[1];
+  return i * allRows + j;
+}
+function neighborIndexes(index) {
+  let iIndex = getRowOfIndex(index);
+  let jIndex = getColOfIndex(index);
+  let resultArray = [];
+  const cell = [iIndex, jIndex];
+  const cells = [
+    [iIndex - 1, jIndex - 1],
+    [iIndex - 1, jIndex],
+    [iIndex - 1, jIndex + 1],
+    [iIndex, jIndex - 1],
+    [iIndex, jIndex + 1],
+    [iIndex + 1, jIndex - 1],
+    [iIndex + 1, jIndex],
+    [iIndex + 1, jIndex + 1],
+  ];
+  cells.forEach((el) => {
+    if (validator(el)) {
+      resultArray.push(getCellIndex(el));
+    }
+  });
+  return resultArray;
 }
 function getAdjacentMines(index) {
   return calculateAdjacentMines(index);
 }
 function checkAdjacents(index) {
-  console.log("Clicked Index: ", index);
-  if (index < 0 || index > allRows * allCols - 1) {
+  const minesNumber = getAdjacentMines(index);
+  if (minesNumber > 0) {
+    $(".grid").children().eq(index).attr("data-value", minesNumber);
     return;
   } else {
-    const minesNumber = getAdjacentMines(index);
-    console.log("mines Number: ", minesNumber);
-    if (minesNumber > 0) {
-      $(".grid").children().eq(index).attr("data-value", minesNumber);
-      console.log("Index of Shown Span that must be a mine number: ", index);
-      return;
-    } else {
-      const cells = neighborIndexes(index);
-      cells.forEach(function (cell) {
-        const $cell = $(".grid").children().eq(cell);
-        if (!$cell.hasClass("revealed") && !$cell.hasClass("flag")) {
-          $cell.addClass("revealed");
-          checkAdjacents(cell);
-        }
-      });
-    }
+    const cells = neighborIndexes(index);
+    cells.forEach(function (cell) {
+      const $cell = $(".grid").children().eq(cell);
+      if (!$cell.hasClass("revealed") && !$cell.hasClass("flag")) {
+        $cell.addClass("revealed");
+        checkAdjacents(cell);
+      }
+    });
   }
 }
