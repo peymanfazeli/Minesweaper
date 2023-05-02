@@ -15,10 +15,10 @@
 					</xsl:if> -->
 					<xsl:choose>
 						<xsl:when test="@mine = 'true'">
-							<span data-value="mine"></span>
+							<span class="gCell" data-value="mine"></span>
 						</xsl:when>
 						<xsl:otherwise>
-							<span></span>
+							<span class="gCell"></span>
 						</xsl:otherwise>
 					</xsl:choose>
 				</xsl:for-each>

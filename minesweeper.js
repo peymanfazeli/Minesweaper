@@ -1,4 +1,3 @@
-/* eslint-disable no-use-before-define */
 /* eslint-disable no-undef */
 /* eslint-disable func-names */
 /* eslint-disable no-plusplus */
@@ -56,10 +55,10 @@ function getColOfIndex(index) {
 let flagNumber = 0;
 // let rightClicked = false;
 let rClickNumber = 0;
-let clickNumber = 0;
+
 // 3- making xsl for xslt Processor
 $(document).ready(function () {
-  const appendedGrid = $(".window");
+  var appendedGrid = $(".window");
   // Load XSL file using AJAX
   $.ajax({
     url: "grid.xsl",
@@ -76,27 +75,55 @@ $(document).ready(function () {
       // Append result document to window div
       appendedGrid.append(resultDocument);
       // Click or right click on each span
-      appendedGrid
-        .find("span")
-        .on("contextmenu click mousedown", function (event) {
-          event.preventDefault();
-          if (event.which === 3) {
-            rClickNumber++;
+      appendedGrid.find(".gCell").on("contextmenu", function (r) {
+        r.preventDefault();
+      });
+      appendedGrid.find(".gCell").on("mousedown", function (event) {
+        event.preventDefault();
+        // console.log(event);
+        if (event.which === 3) {
+          const flaggedSpan = $(this);
+          if (
+            !flaggedSpan.hasClass("flag") &&
+            !flaggedSpan.hasClass("revealed")
+          ) {
+            flagNumber++;
             diffrenceBetweenFlagsAndMines();
-            $(this).off("click mousedown contextmenu").addClass("flag");
-          } else if (event.which === 1) {
-            $(this).off("click mousedown").addClass("revealed");
-            if ($(this).data("value") === "mine") {
-              // Check if the clicked span contains a mine
-              mineClicked();
-            } else {
-              checkAdjacents($(this).index());
-              clickNumber++;
-            }
-            console.log("Click Number: ", clickNumber);
-            console.log("Right Click Number: ", rClickNumber);
+            flaggedSpan.addClass("flag");
+          } else {
+            flagNumber--;
+            diffrenceBetweenFlagsAndMines();
+            flaggedSpan.removeClass("flag");
           }
-        });
+        }
+        if (event.which === 1) {
+          const noneFlaggedSpan = $(this);
+          if (
+            !noneFlaggedSpan.hasClass("revealed") &&
+            !noneFlaggedSpan.hasClass("flag")
+          ) {
+            noneFlaggedSpan.addClass("revealed");
+            if (noneFlaggedSpan.data("value") === "mine") {
+              mineClicked(noneFlaggedSpan.index());
+            } else {
+              revealNeighbors(noneFlaggedSpan.index());
+              console.log(noneFlaggedSpan.index());
+            }
+          } else if (noneFlaggedSpan.hasClass("revealed")) {
+            revealAndCheck(noneFlaggedSpan.index());
+          }
+        }
+      });
+      appendedGrid.find(".smile").on("mouseenter", function (r) {
+        $(this).hover(
+          function () {
+            $(this).attr("data-value", "hover");
+          },
+          function () {
+            $(this).attr("data-value", "normal");
+          }
+        );
+      });
     },
     error: function () {
       console.log("An error occurred while requesting the XSL file.");
@@ -111,25 +138,23 @@ counterBox.innerHTML = levels[0].mines;
 // 4- Game Logic based On Events:
 // 4-1 clicking on one span
 function diffrenceBetweenFlagsAndMines() {
-  flagNumber++;
   counterBox.innerHTML = levels[0].mines - flagNumber;
 }
-function mineClicked() {
+function mineClicked(index) {
   smile.dataset.value = "ok";
-  $(".grid").children().off("click mousedown contextmenu");
-  alert("MINE");
+  $(".grid").children().eq(index).addClass("revealed");
+  $(".grid").children().off("mousedown contextmenu");
+  setTimeout(() => {
+    alert("MINE");
+  }, 500);
 }
 // 4-2 Adjacent mines
 function calculateAdjacentMines(index) {
   let adjacentMines = 0;
-  // get neighboring indexes
   let neighbors = neighborIndexes(index);
-  // loop through neighboring indexes
   for (let i = 0; i < neighbors.length; i++) {
     let neighborIndex = neighbors[i];
-    // check if neighbor index is within grid bounds
     if (neighborIndex >= 0 && neighborIndex <= allRows * allCols - 1) {
-      // check if neighbor index contains a mine
       const $neighborSpan = $(".grid").children().eq(neighborIndex);
       if ($neighborSpan.data("value") === "mine") {
         adjacentMines++;
@@ -176,19 +201,49 @@ function neighborIndexes(index) {
 function getAdjacentMines(index) {
   return calculateAdjacentMines(index);
 }
-function checkAdjacents(index) {
+function revealNeighbors(index) {
+  console.log("index in revealNeighbors: ", index);
   const minesNumber = getAdjacentMines(index);
+  console.log("mines numner in revealNeigh: ", minesNumber);
   if (minesNumber > 0) {
-    $(".grid").children().eq(index).attr("data-value", minesNumber);
-    return;
+    $(".grid")
+      .children()
+      .eq(index)
+      .attr("data-value", minesNumber)
+      .addClass("revealed");
   } else {
     const cells = neighborIndexes(index);
     cells.forEach(function (cell) {
       const $cell = $(".grid").children().eq(cell);
       if (!$cell.hasClass("revealed") && !$cell.hasClass("flag")) {
         $cell.addClass("revealed");
-        checkAdjacents(cell);
+        revealNeighbors(cell);
       }
     });
+  }
+}
+function revealAndCheck(index) {
+  const parent = $(".grid").children();
+  let selectedCell = parent.eq(index).data("value");
+  let flagNumber = 0;
+  let newArr = [];
+  let neighbors = neighborIndexes(index);
+  neighbors.forEach((neighbor) => {
+    if (parent.eq(neighbor).hasClass("flag")) {
+      flagNumber++;
+    } else if (!parent.eq(neighbor).hasClass("revealed")) {
+      newArr.push(neighbor);
+    }
+  });
+  if (selectedCell <= flagNumber) {
+    newArr.forEach((element) => {
+      if (parent.eq(element).data("value") === "mine") {
+        mineClicked(element);
+      } else {
+        revealNeighbors(element);
+      }
+    });
+  } else {
+    console.log("not enough flags");
   }
 }
