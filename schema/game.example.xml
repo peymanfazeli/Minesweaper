@@ -3,14 +3,14 @@
 
     <levels default="1">
 
-        <level id="1" title="Beginner!" timer="false">
+        <level id="1" title="Beginner" timer="false">
             <rows>3</rows>
             <cols>3</cols>
             <mines>3</mines>
             <time>0</time>
         </level>
 
-        <level id="2" title="Harder!" timer="true">
+        <level id="2" title="Harder" timer="true">
             <rows>10</rows>
             <cols>10</cols>
             <mines>5</mines>
