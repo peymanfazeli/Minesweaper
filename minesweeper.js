@@ -4,6 +4,8 @@
 /* eslint-disable no-console */
 /* eslint-disable quotes */
 
+// console.log(levelNumber);
+
 // 1- Extracting data:
 const doc = new DOMParser().parseFromString(getGameXML(), "text/xml");
 console.log(doc);
@@ -20,12 +22,16 @@ const levels = Array.from(doc.querySelectorAll("level")).map((level) => ({
 console.log("Title :", title);
 console.log("Default Level: ", defaultLevel);
 console.log("Levels: ", levels);
+// Handlers
+const counterBox = document.querySelector(".counter");
 // working on levels array
 let allRows = levels[defaultLevel].rows;
 let allCols = levels[defaultLevel].cols;
 let allMines = levels[defaultLevel].mines;
 let time;
+let flagNumber = 0;
 let gridResponse;
+counterBox.innerHTML = allMines;
 //  finding Game Matirx
 
 let indexValue = 0;
@@ -57,6 +63,7 @@ function updateGridResponse(selectedLevel = 0, gridXsl, update = false) {
     </request>
   `);
     time = selectedLevel.time;
+    flagNumber = 0;
   }
   // Parse gridResponse as XML document
   var gridXml = new DOMParser().parseFromString(gridResponse, "text/xml");
@@ -70,6 +77,7 @@ function updateGridResponse(selectedLevel = 0, gridXsl, update = false) {
     $(".window").append(gridContent);
   } else {
     $(".grid").replaceWith(gridContent);
+    diffrenceBetweenFlagsAndMines();
   }
   $(".gCell").on("contextmenu", function (r) {
     r.preventDefault();
@@ -151,11 +159,7 @@ $(document).ready(function () {
 });
 // });
 // Constants and Handlers
-let flagNumber = 0;
 
-// console.log(levelNumber);
-const counterBox = document.querySelector(".counter");
-counterBox.innerHTML = allMines;
 // 4- Game Logic based On Events:
 // 4-1 clicking on one span
 function diffrenceBetweenFlagsAndMines() {
@@ -270,3 +274,8 @@ function revealAndCheck(index) {
     console.log("not enough flags");
   }
 }
+// Dragging and resizing window box
+$(function () {
+  $(".window").draggable();
+  $(".window").resizable();
+});
