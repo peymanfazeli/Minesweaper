@@ -1,18 +1,15 @@
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output method="html"/>
-
   <xsl:template match="/">
-    <html>
+	<html>
       <head>
-        <title>Minesweeper</title>
+        	<title>Minesweeper</title>
       </head>
       <body>
 	  	<div class="grid">
 			<xsl:for-each select="grid/row">
+			<xsl:value-of select="row"><span>Row</span></xsl:value-of>
 				<xsl:for-each select="col">
-				  <!-- <xsl:if test="@mine = 'true'">
-						<span></span>
-					</xsl:if> -->
 					<xsl:choose>
 						<xsl:when test="@mine = 'true'">
 							<span class="gCell" data-value="mine"></span>
@@ -27,4 +24,4 @@
       </body>
     </html>
   </xsl:template>
-</xsl:stylesheet>
+</xsl:stylesheet> 

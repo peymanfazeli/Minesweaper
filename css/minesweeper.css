@@ -124,6 +124,7 @@ body {
 .grid span {
   display: block;
   position: relative;
+  flex-basis: 25px;
   /*width: 1em;*/
   height: 1em;
   background: #c0c0c0;
