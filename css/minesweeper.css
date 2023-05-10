@@ -36,8 +36,8 @@ body {
 .window {
   background: white;
   position: relative;
-  width: 300px;
-  height: 320px;
+  /* width: 300px;
+  height: 320px; */
   border-radius: 5px;
   box-shadow: 0 10px 16px 0 rgba(0, 0, 0, 0.2),
     0 20px 20px 0 rgba(0, 0, 0, 0.19);

@@ -18,7 +18,7 @@ function getGameXML(cb) {
                     <rows>9</rows>
                     <cols>9</cols>
                     <mines>5</mines>
-                    <time>120</time>
+                    
                 </level>
                 <level id="2" title="Harder" timer="true">
                     <rows>10</rows>

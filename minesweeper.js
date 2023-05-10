@@ -15,7 +15,9 @@ const levels = Array.from(doc.querySelectorAll("level")).map((level) => ({
   rows: parseInt(level.querySelector("rows").textContent),
   cols: parseInt(level.querySelector("cols").textContent),
   mines: parseInt(level.querySelector("mines").textContent),
-  time: parseInt(level.querySelector("time").textContent),
+  time: level.querySelector("time")
+    ? parseInt(level.querySelector("time").textContent)
+    : null,
 }));
 console.log("Title :", title);
 console.log("Default Level: ", defaultLevel);
@@ -24,13 +26,17 @@ console.log("Levels: ", levels);
 const counterBox = document.querySelector(".counter");
 const timer = document.querySelector("#timer");
 // Loading defaults
+let isTimer = false;
 let allRows;
 let allCols;
 let allMines = levels[defaultLevel].mines;
+let topRightBox;
 let time;
 let flagNumber;
+let clickNumber = 0;
 let gridResponse;
 let basis;
+let gridXsl;
 counterBox.innerHTML = allMines;
 const bottomRight =
   '<div class="bottomRight" style="pointer-events: all;cursor:pointer;z-index:200;background-color:red;position:absolute;right:-5px;bottom:-5px;width:25px;height:25px"></div>';
@@ -39,8 +45,27 @@ let allGcells;
 // timer variables
 var gameTimer;
 var timeleft;
+let timerSet = false;
+function gameTimerFunction(timeleft) {
+  clearInterval(gameTimer);
+  timerSet = true;
+  gameTimer = setInterval(function () {
+    if (timeleft <= 0) {
+      // clearInterval(gameTimer);
+      smile.dataset.value = "ok";
+      $(".grid").children().off("mousedown contextmenu");
+      setTimeout(() => {
+        alert("Time Out");
+      }, 1000);
+    } else {
+      timer.innerHTML = timeleft;
+    }
+    timeleft -= 1;
+  }, 1000);
+}
 // Getting row of Index
-function updateGridResponse(selectedLevel, gridXsl, update = false) {
+function updateGridResponse(selectedLevel, update = false) {
+  document.getElementById("timer").innerHTML = "";
   if (selectedLevel) {
     gridResponse = getNewGame(`
     <request>
@@ -49,7 +74,18 @@ function updateGridResponse(selectedLevel, gridXsl, update = false) {
         <mines>${selectedLevel.mines}</mines>
     </request>
   `);
-    time = selectedLevel.time;
+    if (selectedLevel.time) {
+      isTimer = true;
+      timerSet = true;
+      timeleft = selectedLevel.time;
+    } else {
+      isTimer = false;
+      timerSet = false;
+      clickNumber = 0;
+      clearInterval(gameTimer);
+    }
+    // if istimer=== true ==> timer.innerHtml=gameTimerFunction(timeleft)else
+
     allRows = selectedLevel.rows;
     allCols = selectedLevel.cols;
     allMines = selectedLevel.mines;
@@ -57,38 +93,20 @@ function updateGridResponse(selectedLevel, gridXsl, update = false) {
   }
   basis = 100 / selectedLevel.cols + "%";
   allGcells = selectedLevel.cols * selectedLevel.rows;
-  // timer.innerHTML = time;
   // Timer part
-  timeleft = time;
-  gameTimer = setInterval(function () {
-    if (timeleft <= 0) {
-      clearInterval(gameTimer);
-      document.getElementById("timer").innerHTML = "Finished";
-      smile.dataset.value = "ok";
-      $(".grid").children().off("mousedown contextmenu");
-      alert("Time Out");
-    } else {
-      document.getElementById("timer").innerHTML = timeleft;
-    }
-    timeleft -= 1;
-  }, 1000);
 
-  // Parse gridResponse as XML document
   var gridXml = new DOMParser().parseFromString(gridResponse, "text/xml");
-  // Create XSLT processor and import XSL document
   var xsltProcessor = new XSLTProcessor();
   xsltProcessor.importStylesheet(gridXsl);
-  // Transform XML document using XSLT processor
   var gridContent = xsltProcessor.transformToFragment(gridXml, document);
-  // Replace existing grid with new content
   if (update === false) {
     $(".window").append(gridContent);
     $(".window").append(bottomRight);
   } else {
     $(".grid").replaceWith(gridContent);
     diffrenceBetweenFlagsAndMines();
-    clearInterval(gameTimer);
   }
+
   $(".gCell").css("flex-basis", basis);
   $(".gCell").on("contextmenu", function (r) {
     r.preventDefault();
@@ -109,13 +127,21 @@ function updateGridResponse(selectedLevel, gridXsl, update = false) {
       }
     }
     if (event.which === 1) {
+      // whereas user can click on revealed cells to use recursive I put this code here it can be moved to *
+      if (isTimer === false) {
+        clickNumber++;
+        timer.innerHTML = clickNumber;
+      }
+      if (timerSet === true) {
+        gameTimerFunction(timeleft);
+        timerSet = false;
+      }
       const noneFlaggedSpan = $(this);
-      // checkStatus();
       if (
         !noneFlaggedSpan.hasClass("revealed") &&
         !noneFlaggedSpan.hasClass("flag")
       ) {
-        // noneFlaggedSpan.addClass("revealed");
+        // *;
         checkStatus(false, noneFlaggedSpan.index());
         if (noneFlaggedSpan.data("value") === "mine") {
           mineClicked(noneFlaggedSpan.index());
@@ -139,65 +165,72 @@ function updateGridResponse(selectedLevel, gridXsl, update = false) {
   });
   // Dragging start
   let windowNode = document.querySelector(".window");
-  windowNode.onmousedown = function (event) {
+  let gameTitleNode = document.querySelector(".title-bar");
+  gameTitleNode.onmousedown = function (event) {
     if (event.target === smile || event.target === bottomRightNode) {
       return false;
     }
-    let shiftX = event.clientX - windowNode.getBoundingClientRect().left;
-    let shiftY = event.clientY - windowNode.getBoundingClientRect().top;
+    if (event.which === 1) {
+      let shiftX = event.clientX - windowNode.getBoundingClientRect().left;
+      let shiftY = event.clientY - windowNode.getBoundingClientRect().top;
 
-    windowNode.style.position = "absolute";
-    windowNode.style.zIndex = 1000;
-    document.body.append(windowNode);
-    moveAt(event.pageX, event.pageY);
-    function moveAt(pageX, pageY) {
-      windowNode.style.left = pageX - shiftX + "px";
-      windowNode.style.top = pageY - shiftY + "px";
-    }
-    function onMouseMove(event) {
+      windowNode.style.position = "absolute";
+      windowNode.style.zIndex = 1000;
+      document.body.append(windowNode);
       moveAt(event.pageX, event.pageY);
+      function moveAt(pageX, pageY) {
+        windowNode.style.left = pageX - shiftX + "px";
+        windowNode.style.top = pageY - shiftY + "px";
+      }
+      function onMouseMove(event) {
+        moveAt(event.pageX, event.pageY);
+      }
+      document.addEventListener("mousemove", onMouseMove);
+      document.onmouseup = function () {
+        document.removeEventListener("mousemove", onMouseMove);
+        gameTitleNode.onmouseup = null;
+      };
     }
-    document.addEventListener("mousemove", onMouseMove);
-    windowNode.onmouseup = function () {
-      document.removeEventListener("mousemove", onMouseMove);
-      windowNode.onmouseup = null;
-    };
   };
   // Resize Start
   const bottomRightNode = document.querySelector(".bottomRight");
+  const gridNode = document.querySelector(".grid");
+  let gridWidth = parseInt(
+    getComputedStyle(gridNode).getPropertyValue("width")
+  );
+  let gridHeight = parseInt(
+    getComputedStyle(gridNode).getPropertyValue("height")
+  );
+  console.log(gridHeight);
   bottomRightNode.onmousedown = function (event) {
-    let startX = event.clientX;
-    let startY = event.clientY;
-    let windowStartWidth = parseInt(
-      document.defaultView.getComputedStyle(windowNode).width,
-      10
-    );
-    let windowStartHeight = parseInt(
-      document.defaultView.getComputedStyle(windowNode).height,
-      10
-    );
-    function onResizeMouseMove(event) {
-      let newWidth = windowStartWidth + event.clientX - startX;
-      let newHeight = windowStartHeight + event.clientY - startY;
-      windowNode.style.width = newWidth + "px";
-      windowNode.style.height = newHeight + "px";
+    if (event.which === 1) {
+      let startX = event.clientX;
+      let startY = event.clientY;
+      let windowStartWidth = parseInt(
+        document.defaultView.getComputedStyle(windowNode).width,
+        10
+      );
+      let windowStartHeight = parseInt(
+        document.defaultView.getComputedStyle(windowNode).height,
+        10
+      );
+      function onResizeMouseMove(event) {
+        let newWidth = windowStartWidth + event.clientX - startX;
+        let newHeight = windowStartHeight + event.clientY - startY;
+        if (newWidth >= gridWidth) {
+          windowNode.style.width = newWidth + "px";
+        }
+        if (newHeight >= gridHeight + 110) {
+          windowNode.style.height = newHeight + "px";
+        }
+      }
+      document.addEventListener("mousemove", onResizeMouseMove);
+      $(".bottomRight").on("mouseleave", function () {
+        document.removeEventListener("mousemove", onResizeMouseMove);
+        bottomRightNode.onmouseup = null;
+      });
     }
-    document.addEventListener("mousemove", onResizeMouseMove);
-    $(".bottomRight").on("mouseup", function () {
-      document.removeEventListener("mousemove", onResizeMouseMove);
-      bottomRightNode.onmouseup = null;
-    });
-    // bottomRightNode.onmouseup = function () {
-    //   console.log(bottomRightNode);
-    //   bottomRightNode.onmouseup = null;
-    // };
   };
-
-  // Resize end
-  // windowNode.ondragstart = function () {
-  //   return false;
-  // };
-  // Dragging end
 }
 
 // 3- making xsl for xslt Processor
@@ -208,24 +241,11 @@ $(document).ready(function () {
     url: "grid.xsl",
     type: "GET",
     dataType: "xml",
-    success: function (gridXsl) {
+    success: function (gXsl) {
       // Initialize grid with default level
       var selectedLevel = levels[defaultLevel];
-      updateGridResponse(selectedLevel, gridXsl);
-      // Add event listener to smile button
-      smile.onmousedown = function (e) {
-        e.preventDefault();
-        const levelNames = levels.map((level) => level.title);
-        const selectedLevelName = prompt(
-          `☺لطفا مرحله رو انتخاب کنید: ${levelNames.join(", ")}`
-        );
-        const selectedLevel = levels.find(
-          (level) => level.title === selectedLevelName
-        );
-        if (selectedLevel) {
-          updateGridResponse(selectedLevel, gridXsl, true);
-        }
-      };
+      gridXsl = gXsl;
+      updateGridResponse(selectedLevel);
     },
     error: function () {
       console.log("An error occurred while requesting the XSL file.");
@@ -243,8 +263,10 @@ function getColOfIndex(index) {
 function diffrenceBetweenFlagsAndMines() {
   counterBox.innerHTML = allMines - flagNumber;
 }
+// topRightCounter(isTimerSet());
 function checkStatus(isRightClick, index) {
   allRevealedSpans = $(".revealed").length;
+  console.log(allRevealedSpans);
   if (!isRightClick) {
     $(".grid").children().eq(index).addClass("revealed");
   } else {
@@ -252,7 +274,6 @@ function checkStatus(isRightClick, index) {
     flagNumber++;
     diffrenceBetweenFlagsAndMines();
   }
-
   if (allRevealedSpans === allGcells - allMines && flagNumber === allMines) {
     setTimeout(() => {
       alert("You are Winner");
@@ -263,6 +284,20 @@ function checkStatus(isRightClick, index) {
   }
 }
 let smile = document.querySelector(".smile");
+// Add event listener to smile button
+smile.onmousedown = function (e) {
+  e.preventDefault();
+  const levelNames = levels.map((level) => level.title);
+  const selectedLevelName = prompt(
+    `☺لطفا مرحله رو انتخاب کنید: ${levelNames.join(", ")}`
+  );
+  const selectedLevel = levels.find(
+    (level) => level.title === selectedLevelName
+  );
+  if (selectedLevel) {
+    updateGridResponse(selectedLevel, true);
+  }
+};
 function mineClicked(index) {
   smile.dataset.value = "ok";
   $(".grid").children().eq(index).addClass("revealed");
@@ -272,21 +307,7 @@ function mineClicked(index) {
     alert("Game Over");
   }, 500);
 }
-// function timerGame(time) {
-//   var timeleft = time;
-//   var gameTimer = setInterval(function () {
-//     if (timeleft <= 0) {
-//       clearInterval(gameTimer);
-//       document.getElementById("timer").innerHTML = "Finished";
-//       smile.dataset.value = "ok";
-//       ".grid".children().off("mousedown contextmenu");
-//       alert("Time Out");
-//     } else {
-//       document.getElementById("timer").innerHTML = timeleft;
-//     }
-//     timeleft -= 1;
-//   }, 1000);
-// }
+
 // 4-2 Adjacent mines
 function calculateAdjacentMines(index) {
   let adjacentMines = 0;
@@ -378,6 +399,7 @@ function revealAndCheck(index) {
       if (parent.eq(element).data("value") === "mine") {
         mineClicked(element);
       } else {
+        checkStatus(false, element);
         revealNeighbors(element);
       }
     });
@@ -386,12 +408,26 @@ function revealAndCheck(index) {
     console.log("not enough flags");
   }
 }
-// Dragging and resizing window box
-// Resize
+// Modal
+const btn = document.querySelector(".modal-btn");
+const input = document.querySelector(".field");
+const modal = document.querySelector(".modal-content");
+function letters(inputText) {
+  let letter = /^[A-Za-z\u0600-\u06FF\s]+$/;
+  if (inputText.value.match(letter)) {
+    modal.style.display = "none";
+    return true;
+  } else {
+    setTimeout(() => {
+      alert("برای نام کاربری از حروف استفاده کنید...");
+    }, 500);
+    return false;
+  }
+}
 
-const windowPoint = $(".window").position();
-console.log("Window Position: ", windowPoint);
-
+btn.addEventListener("click", function () {
+  letters(input);
+});
 // const windowPoint = $(".window").position();
 // console.log("Window Position: ", windowPoint);
 // const getPsuedo = window
@@ -406,5 +442,3 @@ console.log("Window Position: ", windowPoint);
 // });
 // brainStorm
 // allGcell=>whenever revealed is run,allGcell--;if allGCell===0 winner
-// @Todo1:when click on a span that has numeric data-value when there is no other spans it must show the winner(check the recursive part for adding checkStatus())
-// @Todo2: timer must be stopped when it is ended and must be cleared when the level is changed
