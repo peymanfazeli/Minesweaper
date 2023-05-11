@@ -39,7 +39,7 @@ let basis;
 let gridXsl;
 counterBox.innerHTML = allMines;
 const bottomRight =
-  '<div class="bottomRight" style="pointer-events: all;cursor:pointer;z-index:200;background-color:red;position:absolute;right:-5px;bottom:-5px;width:25px;height:25px"></div>';
+  '<div class="bottomRight" style="pointer-events: all;cursor: nwse-resize;z-index:200;position:absolute;right:-40px;bottom:-40px;width:55px;height:55px"></div>';
 let allRevealedSpans;
 let allGcells;
 // timer variables
@@ -48,10 +48,8 @@ var timeleft;
 let timerSet = false;
 function gameTimerFunction(timeleft) {
   clearInterval(gameTimer);
-  timerSet = true;
   gameTimer = setInterval(function () {
     if (timeleft <= 0) {
-      // clearInterval(gameTimer);
       smile.dataset.value = "ok";
       $(".grid").children().off("mousedown contextmenu");
       setTimeout(() => {
@@ -74,27 +72,26 @@ function updateGridResponse(selectedLevel, update = false) {
         <mines>${selectedLevel.mines}</mines>
     </request>
   `);
+    // recognition of timer
     if (selectedLevel.time) {
       isTimer = true;
       timerSet = true;
       timeleft = selectedLevel.time;
     } else {
       isTimer = false;
-      timerSet = false;
+      // timerSet = false;
       clickNumber = 0;
       clearInterval(gameTimer);
     }
-    // if istimer=== true ==> timer.innerHtml=gameTimerFunction(timeleft)else
 
     allRows = selectedLevel.rows;
     allCols = selectedLevel.cols;
     allMines = selectedLevel.mines;
     flagNumber = 0;
   }
+  // definition of basis
   basis = 100 / selectedLevel.cols + "%";
   allGcells = selectedLevel.cols * selectedLevel.rows;
-  // Timer part
-
   var gridXml = new DOMParser().parseFromString(gridResponse, "text/xml");
   var xsltProcessor = new XSLTProcessor();
   xsltProcessor.importStylesheet(gridXsl);
@@ -232,19 +229,16 @@ function updateGridResponse(selectedLevel, update = false) {
     }
   };
 }
-
 // 3- making xsl for xslt Processor
-// jaye window game title ro bezaram
-
 $(document).ready(function () {
   $.ajax({
     url: "grid.xsl",
     type: "GET",
     dataType: "xml",
     success: function (gXsl) {
-      // Initialize grid with default level
       var selectedLevel = levels[defaultLevel];
       gridXsl = gXsl;
+      // Initialize grid with default level
       updateGridResponse(selectedLevel);
     },
     error: function () {
@@ -252,18 +246,12 @@ $(document).ready(function () {
     },
   });
 });
-// 4- Game Logic based On Events:
-// 4-1 clicking on one span
-function getRowOfIndex(index) {
-  return Math.trunc(index / allRows);
-}
-function getColOfIndex(index) {
-  return Math.trunc(index % allCols);
-}
+
+// Game Logic based On Events:
 function diffrenceBetweenFlagsAndMines() {
   counterBox.innerHTML = allMines - flagNumber;
 }
-// topRightCounter(isTimerSet());
+// checking has user won or not yet
 function checkStatus(isRightClick, index) {
   allRevealedSpans = $(".revealed").length;
   console.log(allRevealedSpans);
@@ -308,21 +296,7 @@ function mineClicked(index) {
   }, 500);
 }
 
-// 4-2 Adjacent mines
-function calculateAdjacentMines(index) {
-  let adjacentMines = 0;
-  let neighbors = neighborIndexes(index);
-  for (let i = 0; i < neighbors.length; i++) {
-    let neighborIndex = neighbors[i];
-    if (neighborIndex >= 0 && neighborIndex <= allRows * allCols - 1) {
-      const $neighborSpan = $(".grid").children().eq(neighborIndex);
-      if ($neighborSpan.data("value") === "mine") {
-        adjacentMines++;
-      }
-    }
-  }
-  return adjacentMines;
-}
+// checking if the cell that is sent is in the grid border to send matrix or no
 function validator(cellIndex) {
   let i = cellIndex[0];
   let j = cellIndex[1];
@@ -336,6 +310,13 @@ function getCellIndex(matrix) {
   let j = matrix[1];
   return i * allRows + j;
 }
+function getRowOfIndex(index) {
+  return Math.trunc(index / allRows);
+}
+function getColOfIndex(index) {
+  return Math.trunc(index % allCols);
+}
+// finding neighbour span's indexes
 function neighborIndexes(index) {
   let iIndex = getRowOfIndex(index);
   let jIndex = getColOfIndex(index);
@@ -357,6 +338,21 @@ function neighborIndexes(index) {
     }
   });
   return resultArray;
+}
+// 4-2 Calculation of Adjacent mines
+function calculateAdjacentMines(index) {
+  let adjacentMines = 0;
+  let neighbors = neighborIndexes(index);
+  for (let i = 0; i < neighbors.length; i++) {
+    let neighborIndex = neighbors[i];
+    if (neighborIndex >= 0 && neighborIndex <= allRows * allCols - 1) {
+      const $neighborSpan = $(".grid").children().eq(neighborIndex);
+      if ($neighborSpan.data("value") === "mine") {
+        adjacentMines++;
+      }
+    }
+  }
+  return adjacentMines;
 }
 function getAdjacentMines(index) {
   return calculateAdjacentMines(index);
@@ -403,10 +399,11 @@ function revealAndCheck(index) {
         revealNeighbors(element);
       }
     });
-  } else {
-    console.log("Global Flag Numbers :", flagNumber);
-    console.log("not enough flags");
   }
+  //  else {
+  //   console.log("Global Flag Numbers :", flagNumber);
+  //   console.log("not enough flags");
+  // }
 }
 // Modal
 const btn = document.querySelector(".modal-btn");
@@ -428,17 +425,3 @@ function letters(inputText) {
 btn.addEventListener("click", function () {
   letters(input);
 });
-// const windowPoint = $(".window").position();
-// console.log("Window Position: ", windowPoint);
-// const getPsuedo = window
-//   .getComputedStyle(document.querySelector(".window"), ":after")
-//   .getPropertyPriority("position");
-// .getPropertyValue("width");
-// .getPropertyPriority("width");
-// console.log(getPsuedo);
-// $(function () {
-//   $(".window").draggable();
-//   $(".window").resizable();
-// });
-// brainStorm
-// allGcell=>whenever revealed is run,allGcell--;if allGCell===0 winner
