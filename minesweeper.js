@@ -6,7 +6,6 @@
 
 // 1- Extracting data:
 const doc = new DOMParser().parseFromString(getGameXML(), "text/xml");
-console.log(doc);
 const title = doc.querySelector("game").getAttribute("title");
 const defaultLevel = doc.querySelector("levels").getAttribute("default") - 1;
 const levels = Array.from(doc.querySelectorAll("level")).map((level) => ({
@@ -26,6 +25,7 @@ console.log("Levels: ", levels);
 const counterBox = document.querySelector(".counter");
 const timer = document.querySelector("#timer");
 // Loading defaults
+let countedArr = [];
 let isTimer = false;
 let allRows;
 let allCols;
@@ -39,7 +39,7 @@ let basis;
 let gridXsl;
 counterBox.innerHTML = allMines;
 const bottomRight =
-  '<div class="bottomRight" style="pointer-events: all;cursor: nwse-resize;z-index:200;position:absolute;right:-40px;bottom:-40px;width:55px;height:55px"></div>';
+  '<div class="bottomRight" style="pointer-events: all;cursor: nwse-resize;z-index:200;position:absolute;right:-40px;bottom:-30px;width:55px;height:55px"></div>';
 let allRevealedSpans;
 let allGcells;
 // timer variables
@@ -50,6 +50,7 @@ function gameTimerFunction(timeleft) {
   clearInterval(gameTimer);
   gameTimer = setInterval(function () {
     if (timeleft <= 0) {
+      clearInterval(gameTimer);
       smile.dataset.value = "ok";
       $(".grid").children().off("mousedown contextmenu");
       setTimeout(() => {
@@ -77,10 +78,12 @@ function updateGridResponse(selectedLevel, update = false) {
       isTimer = true;
       timerSet = true;
       timeleft = selectedLevel.time;
+      timer.innerHTML = timeleft;
     } else {
       isTimer = false;
-      // timerSet = false;
+      timerSet = false;
       clickNumber = 0;
+      timer.innerHTML = clickNumber;
       clearInterval(gameTimer);
     }
 
@@ -113,10 +116,10 @@ function updateGridResponse(selectedLevel, update = false) {
     if (event.which === 3) {
       const flaggedSpan = $(this);
       if (!flaggedSpan.hasClass("flag") && flaggedSpan.hasClass("revealed")) {
-        checkStatus(true, flaggedSpan.index());
+        checkWinStatus(true, flaggedSpan.index());
       }
       if (!flaggedSpan.hasClass("flag") && !flaggedSpan.hasClass("revealed")) {
-        checkStatus(true, flaggedSpan.index());
+        checkWinStatus(true, flaggedSpan.index());
       } else {
         flagNumber--;
         flaggedSpan.removeClass("flag");
@@ -124,25 +127,23 @@ function updateGridResponse(selectedLevel, update = false) {
       }
     }
     if (event.which === 1) {
-      // whereas user can click on revealed cells to use recursive I put this code here it can be moved to *
-      if (isTimer === false) {
-        clickNumber++;
-        timer.innerHTML = clickNumber;
-      }
-      if (timerSet === true) {
-        gameTimerFunction(timeleft);
-        timerSet = false;
-      }
       const noneFlaggedSpan = $(this);
       if (
         !noneFlaggedSpan.hasClass("revealed") &&
         !noneFlaggedSpan.hasClass("flag")
       ) {
-        // *;
-        checkStatus(false, noneFlaggedSpan.index());
+        checkWinStatus(false, noneFlaggedSpan.index());
         if (noneFlaggedSpan.data("value") === "mine") {
           mineClicked(noneFlaggedSpan.index());
         } else {
+          if (isTimer === false) {
+            if (!countedArr.includes(noneFlaggedSpan.index())) {
+              increaseCounter(noneFlaggedSpan.index());
+            }
+          } else if (timerSet === true) {
+            gameTimerFunction(timeleft);
+            // timerSet = false;
+          }
           revealNeighbors(noneFlaggedSpan.index());
         }
       } else if (noneFlaggedSpan.hasClass("revealed")) {
@@ -198,7 +199,6 @@ function updateGridResponse(selectedLevel, update = false) {
   let gridHeight = parseInt(
     getComputedStyle(gridNode).getPropertyValue("height")
   );
-  console.log(gridHeight);
   bottomRightNode.onmousedown = function (event) {
     if (event.which === 1) {
       let startX = event.clientX;
@@ -222,7 +222,7 @@ function updateGridResponse(selectedLevel, update = false) {
         }
       }
       document.addEventListener("mousemove", onResizeMouseMove);
-      $(".bottomRight").on("mouseleave", function () {
+      document.addEventListener("mouseup", function () {
         document.removeEventListener("mousemove", onResizeMouseMove);
         bottomRightNode.onmouseup = null;
       });
@@ -252,9 +252,8 @@ function diffrenceBetweenFlagsAndMines() {
   counterBox.innerHTML = allMines - flagNumber;
 }
 // checking has user won or not yet
-function checkStatus(isRightClick, index) {
+function checkWinStatus(isRightClick, index) {
   allRevealedSpans = $(".revealed").length;
-  console.log(allRevealedSpans);
   if (!isRightClick) {
     $(".grid").children().eq(index).addClass("revealed");
   } else {
@@ -262,6 +261,7 @@ function checkStatus(isRightClick, index) {
     flagNumber++;
     diffrenceBetweenFlagsAndMines();
   }
+
   if (allRevealedSpans === allGcells - allMines && flagNumber === allMines) {
     setTimeout(() => {
       alert("You are Winner");
@@ -361,15 +361,13 @@ function revealNeighbors(index) {
   const minesNumber = getAdjacentMines(index);
   if (minesNumber > 0) {
     $(".grid").children().eq(index).attr("data-value", minesNumber);
-    // .addClass("revealed");
-    checkStatus(false, index);
+    checkWinStatus(false, index);
   } else {
     const cells = neighborIndexes(index);
     cells.forEach(function (cell) {
       const $cell = $(".grid").children().eq(cell);
       if (!$cell.hasClass("revealed") && !$cell.hasClass("flag")) {
-        // $cell.addClass("revealed");
-        checkStatus(false, cell);
+        checkWinStatus(false, cell);
         revealNeighbors(cell);
       }
     });
@@ -382,6 +380,7 @@ function revealAndCheck(index) {
   let selectedCell = parent.eq(index).data("value");
   let newArr = [];
   let neighbors = neighborIndexes(index);
+  let isIndexCounted;
   neighbors.forEach((neighbor) => {
     if (parent.eq(neighbor).hasClass("flag")) {
       neighFlagNumber++;
@@ -389,21 +388,23 @@ function revealAndCheck(index) {
       newArr.push(neighbor);
     }
   });
+
   if (selectedCell <= neighFlagNumber) {
-    console.log("neighbor Flag Numbers :", neighFlagNumber);
     newArr.forEach((element) => {
       if (parent.eq(element).data("value") === "mine") {
         mineClicked(element);
       } else {
-        checkStatus(false, element);
+        checkWinStatus(false, element);
+        if (timerSet === false) {
+          if (!isIndexCounted) {
+            increaseCounter(index);
+            isIndexCounted = true;
+          }
+        }
         revealNeighbors(element);
       }
     });
   }
-  //  else {
-  //   console.log("Global Flag Numbers :", flagNumber);
-  //   console.log("not enough flags");
-  // }
 }
 // Modal
 const btn = document.querySelector(".modal-btn");
@@ -425,3 +426,10 @@ function letters(inputText) {
 btn.addEventListener("click", function () {
   letters(input);
 });
+//  increase clickNumber
+function increaseCounter(index) {
+  clickNumber++;
+  timer.innerHTML = clickNumber;
+  countedArr.push(index);
+  console.log(countedArr);
+}
