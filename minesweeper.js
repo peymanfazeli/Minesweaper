@@ -142,7 +142,7 @@ function updateGridResponse(selectedLevel, update = false) {
             }
           } else if (timerSet === true) {
             gameTimerFunction(timeleft);
-            // timerSet = false;
+             timerSet = false;
           }
           revealNeighbors(noneFlaggedSpan.index());
         }
